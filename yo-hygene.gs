@@ -1,12 +1,15 @@
 /*
  Script by: Bas Baudoin 🦆
- - no template sheet required
- - works 2018-08-23
+ - template sheet optional
+ - works 2018-09-05
  - average runtime ~ 30 - 3600 sec.
+ 
+ v1.01
+ template: https://docs.google.com/spreadsheets/d/1QCN6GQC-Qy4ccrZPYc2vIhkoiaBfbgGDw6OUR11o7Vs/edit#gid=0
 */
 
 // ** settings **
-var spreadsheetUrl = 'https://docs.google.com/spreadsheets/d/spreadsheet_id';
+var spreadsheetUrl = 'https://docs.google.com/spreadsheets/url';
 
 // ** data **
 var spreadsheet = SpreadsheetApp.openByUrl(spreadsheetUrl);
@@ -55,8 +58,6 @@ function main() {
   addToOverview(allDataOverview);
   addDataToSheet(allData);
   
-  // createScore();
-  
 }
 
 function getDeviceData () {
@@ -98,7 +99,6 @@ function getDeviceData () {
     }
   }
   
-  deviceData.push(['', '']);
   deviceData.push(['Mobile vs. desktop', '']);
   deviceData.push(['Cost', 'm: ' + mobileCost + ' - d: ' + desktopCost]);
   deviceData.push(['Conversions', 'm: ' + mobileConversions + ' - d: ' + desktopConversions]);
@@ -116,6 +116,10 @@ function getAccountData () {
   var hasConversions = 'No';
   var budgetLostImpShare = '';
   var rankLostImpShare = '';
+  var totalConversions = 0;
+  var gadsConversions = 0;
+  var analyticsConversions = 0;
+  var hasAttributionModelling = 'No';
   
   // check for conversions in last 30 days
   var accountConversions = parseFloat(AdWordsApp.currentAccount().getStatsFor('LAST_30_DAYS').getConversions());
@@ -136,13 +140,41 @@ function getAccountData () {
     rankLostImpShare = row['SearchRankLostImpressionShare'];
   }
   
+  // account conversion
+  var accountConversionData = AdWordsApp.report(
+    "SELECT Conversions, ConversionCategoryName, ConversionTypeName, ExternalConversionSource " +
+    "FROM ACCOUNT_PERFORMANCE_REPORT " +
+    " DURING LAST_30_DAYS ");
+  
+  
+  var rows = accountConversionData.rows();
+  while (rows.hasNext()) {
+    var row = rows.next();
+    totalConversions++;
+    var numberOfConversions = parseFloat(row['Conversions']);
+    if (numberOfConversions % 1 != 0) {
+      hasAttributionModelling = 'Yes';
+    }
+    var conversionSource = row['ExternalConversionSource'];
+    if (conversionSource == 'Analytics') {
+      analyticsConversions++;
+    } else if (conversionSource == 'Website') {
+      gadsConversions++;
+    }
+  }
+  
   accountData.push(['', '', '']);
   accountData.push(['Account information', '']);
   accountData.push(['Account name', accountName]);
   accountData.push(['Accound id', accountId]);
-  accountData.push(['Conversion tracking (has conversions)', hasConversions]);
   accountData.push(['Lost impressions (budget)', budgetLostImpShare]);
   accountData.push(['Lost impressions (rank/cpc)', rankLostImpShare]);
+
+  accountData.push(['', '', '']);
+  accountData.push(['Conversion tracking', '', '']);
+  accountData.push(['Google Ads conversions', gadsConversions + '/' + totalConversions]);
+  accountData.push(['Analytics conversions', analyticsConversions + '/' + totalConversions]);
+  accountData.push(['Has attribution model (x % 1 = 0)', hasAttributionModelling]);
   
   return accountData;
 }
@@ -153,6 +185,8 @@ function getKeywordData () {
   var totalKeywords = 0;
   var capitalLetterWords = [];
   var punctuationMarkWords = [];
+  var lowQscoreKeywords = [];
+  var nullQscoreKeywords = [];
 
   var keywordsIterator = AdWordsApp.keywords()
   .withCondition('CampaignStatus = ENABLED')
@@ -168,8 +202,9 @@ function getKeywordData () {
     var keywordText = keyword.getText();
     var campaign = keyword.getCampaign().getName();
     var adGroup = keyword.getAdGroup().getName();
+    var qscore = keyword.getQualityScore();
     
-    // capital letters check
+    // hoofdletter check
     if (keywordText.toLowerCase() !== keywordText) {
       capitalLetterWords.push([campaign, adGroup, keywordText]);
     }
@@ -179,11 +214,21 @@ function getKeywordData () {
       punctuationMarkWords.push([campaign, adGroup, keywordText]);
     }
     
+    // low qscore check
+    var minQscore = 7;
+    if (qscore == null) {
+      nullQscoreKeywords.push([campaign, adGroup, keywordText]);
+    } else if (parseFloat(qscore) < minQscore) {
+      lowQscoreKeywords.push([campaign,adGroup, keywordText + ' ' + qscore]);
+    }
+    
   }
   
   keywordData.push(['Keyword data', '']);
   keywordData.push(['Capital letters', capitalLetterWords.length + '/' + totalKeywords, capitalLetterWords]);
   keywordData.push(['Punctuation marks', punctuationMarkWords.length + '/' + totalKeywords, punctuationMarkWords]);
+  keywordData.push(['Qscore is null', nullQscoreKeywords.length + '/' + totalKeywords, nullQscoreKeywords]);
+  keywordData.push(['Qscore < 5', lowQscoreKeywords.length + '/' + totalKeywords, lowQscoreKeywords]);
   
   return keywordData;
 }
@@ -580,50 +625,6 @@ function resetSheet () {
 
   var range = activeSheet.getRange('A1:C' + lastRow);
   range.clearContent();
-}
-
-function createScore () {
-  var activeSheet = spreadsheet.getActiveSheet();
-  var range = activeSheet.getRange('A1:B42');
-  var cellValues = range.getValues();
-  
-  var scoreMultiArray = [];
-  
-  for (var rowI = 0; rowI < cellValues.length; rowI++) {
-    var rowCells = cellValues[rowI];
-    var statName = rowCells[0];
-    var statValue = rowCells[1];
-    if (statName == 'Conversion tracking (has conversions)' ||
-        statName == 'Analytics linked (has views)' ||
-        statName == 'Campaigns with no RLSA' ||
-        statName == 'Adgroups with standard Text Ads' ||
-        statName == 'Adgroups with less than 3 ETAs'
-    ) {
-      Logger.log(statValue+ ' - ' + statName);
-      if (statValue == 'No') {
-        scoreMultiArray.push([1]);
-      } else if (statValue == 'Yes') {
-        scoreMultiArray.push([0]);
-      } else if (statValue.indexOf('/') >= 0) {
-        var fraction = statValue.split('/');
-        var score = fraction[0] / fraction[1];
-        scoreMultiArray.push([score]);
-      } else {
-        scoreMultiArray.push(['']);
-      }
-    } else {
-      scoreMultiArray.push(['']);
-    }
-  }
-  var range = activeSheet.getRange('C1:C42');
-  Logger.log(scoreMultiArray);
-  range.setValues(scoreMultiArray);
-  
-  var score = createAverageFromRange('C1:C42');
-  var percentScore = ((1 - score) * 100).toFixed(2) + '%';
-  
-  var range = activeSheet.getRange('C1');
-  range.setValues([['Hygene: ' + percentScore]]);
 }
 
 function createAverageFromRange(stringRange) {
