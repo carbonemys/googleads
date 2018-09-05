@@ -215,7 +215,7 @@ function getKeywordData () {
     }
     
     // low qscore check
-    var minQscore = 7;
+    var minQscore = 5;
     if (qscore == null) {
       nullQscoreKeywords.push([campaign, adGroup, keywordText]);
     } else if (parseFloat(qscore) < minQscore) {
