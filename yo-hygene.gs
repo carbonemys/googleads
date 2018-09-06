@@ -1,22 +1,36 @@
 /*
  Script by: Bas Baudoin 🦆
- - template sheet optional
+ - template sheet is optional
+ - script works on mcc and account level
  - works 2018-09-05
  - average runtime ~ 30 - 3600 sec.
  
- v1.01
+ v1.02
  template: https://docs.google.com/spreadsheets/d/1QCN6GQC-Qy4ccrZPYc2vIhkoiaBfbgGDw6OUR11o7Vs/edit#gid=0
 */
 
 // ** settings **
-var spreadsheetUrl = 'https://docs.google.com/spreadsheets/url';
+var spreadsheetUrl = 'https://docs.google.com/spreadsheets/d/url';
+
+// only when running on MCC level
+var accountId = '175-095-8716'; // e.g. '123-456-7890'
 
 // ** data **
 var spreadsheet = SpreadsheetApp.openByUrl(spreadsheetUrl);
 var sheets = spreadsheet.getSheets();
 
-function main() {
-  
+function main () {
+  try {
+    MccApp
+      .accounts()
+      .withIds([accountId])
+      .executeInParallel('createHI');
+  } catch (e) {
+    createHI();
+  }
+}
+
+function createHI () {
   // delete everything from the spreadsheet
   resetSheet();
   
@@ -57,7 +71,6 @@ function main() {
 
   addToOverview(allDataOverview);
   addDataToSheet(allData);
-  
 }
 
 function getDeviceData () {
@@ -548,7 +561,7 @@ function getLinRodnitzkyData () {
   } else if (lRRatio >= 2.5) {
     lRInterpretation = lRFixed + ' (poor bidding)';
   } else {
-    Logger.log('Lin Rodnitzky error')
+    lRInterpretation = 'no conversion data';
   }
     
   getLinRodnitzkyData.push(['Lin Rodnitzky Ratio', lRInterpretation]);
