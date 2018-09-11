@@ -2,22 +2,23 @@
  Script by: Bas Baudoin 🦆
  - template sheet is optional
  - script works on mcc and account level
- - works 2018-09-05
  - average runtime ~ 30 - 3600 sec.
  
- v1.02
- template: https://docs.google.com/spreadsheets/d/1QCN6GQC-Qy4ccrZPYc2vIhkoiaBfbgGDw6OUR11o7Vs/edit#gid=0
+ v1.02 - creates tab with account name or optional custom tab name
+ copy template: https://docs.google.com/spreadsheets/d/1QCN6GQC-Qy4ccrZPYc2vIhkoiaBfbgGDw6OUR11o7Vs/edit#gid=0
 */
 
 // ** settings **
-var spreadsheetUrl = 'https://docs.google.com/spreadsheets/d/url';
+var spreadsheetUrl = 'https://docs.google.com/spreadsheets/d/000000
 
-// only when running on MCC level
-var accountId = '175-095-8716'; // e.g. '123-456-7890'
+// ** optional settings **
 
-// ** data **
+// account ID only necessary for mcc
+var accountId = ''; // e.g. '123-456-7890'
+var optionalTabName = '';
+
+// ** globals, do not change **
 var spreadsheet = SpreadsheetApp.openByUrl(spreadsheetUrl);
-var sheets = spreadsheet.getSheets();
 
 function main () {
   try {
@@ -31,10 +32,10 @@ function main () {
 }
 
 function createHI () {
-  // delete everything from the spreadsheet
-  resetSheet();
   
-  // get functions return array => [name, displayValue (, data for separate sheet)]
+  var activeSheet = findAndClearSheet();
+  
+  // get functions have return array => [name, displayValue (, data for separate sheet)]
   //   data for separate sheet struture [[campaign, adgroup(, keyword)], [...
   
   var accountData = getAccountData();
@@ -69,8 +70,8 @@ function createHI () {
     adGroupData
   ];
 
-  addToOverview(allDataOverview);
-  addDataToSheet(allData);
+  addToOverview(allDataOverview, activeSheet);
+  addDataToSheet(allData, activeSheet);
 }
 
 function getDeviceData () {
@@ -569,7 +570,51 @@ function getLinRodnitzkyData () {
   return getLinRodnitzkyData;
 }
 
-function addToOverview (allData) {
+function createAverageFromRange(stringRange) {
+  var activeSheet = spreadsheet.getActiveSheet();
+  var range = activeSheet.getRange(stringRange);
+  var cellValues = range.getValues();
+  
+  var sum = 0;
+  var counter = 0;
+  
+  for (var i = 0; i < cellValues.length; i++) {
+    var cellValue = cellValues[i][0];
+    if (typeof(cellValue) == 'number') {
+      Logger.log(cellValue);
+      sum += cellValue;
+      counter++;
+    }
+  }
+  var average = sum / counter;
+  return average;
+}
+
+function findAndClearSheet () {
+  
+  var accountName = AdWordsApp.currentAccount().getName();
+  
+  var optionalTabEntered = optionalTabName !== '';
+  if (optionalTabEntered) {
+    tabName = optionalTabName;
+  } else {
+    tabName = accountName;
+  }
+  
+  var activeSheet = spreadsheet.getSheetByName(tabName);
+  if (!activeSheet) {
+    spreadsheet.insertSheet(tabName, 1);
+    activeSheet = spreadsheet.getSheetByName(tabName);
+  }
+  
+  var lastRow = parseFloat(activeSheet.getLastRow()) + 1;
+
+  var range = activeSheet.getRange('A1:C' + lastRow);
+  range.clearContent();
+  return activeSheet;
+}
+
+function addToOverview (allData, activeSheet) {
   var overviewSheetData = [];
   var currentRow = 1;
 
@@ -584,15 +629,13 @@ function addToOverview (allData) {
     overviewSheetData.push([' ', ' ']);
   }
 
-  var activeSheet = spreadsheet.getActiveSheet();
   var range = activeSheet.getRange('A1:B' + overviewSheetData.length);
   range.setValues(overviewSheetData);
 }
 
-function addDataToSheet (allData) {
+function addDataToSheet (allData, activeSheet) {
   var sheetData = [];
   
-  var activeSheet = spreadsheet.getActiveSheet();
   var lastRow = activeSheet.getLastRow();
   var rowCounter = lastRow + 2;
   
@@ -630,32 +673,4 @@ function addDataToSheet (allData) {
   Logger.log('rangetext: ' + rangeText);
   var range = activeSheet.getRange(rangeText);
   range.setValues(sheetData);
-}
-
-function resetSheet () {
-  var activeSheet = spreadsheet.getActiveSheet();
-  var lastRow = parseFloat(activeSheet.getLastRow()) + 1;
-
-  var range = activeSheet.getRange('A1:C' + lastRow);
-  range.clearContent();
-}
-
-function createAverageFromRange(stringRange) {
-  var activeSheet = spreadsheet.getActiveSheet();
-  var range = activeSheet.getRange(stringRange);
-  var cellValues = range.getValues();
-  
-  var sum = 0;
-  var counter = 0;
-  
-  for (var i = 0; i < cellValues.length; i++) {
-    var cellValue = cellValues[i][0];
-    if (typeof(cellValue) == 'number') {
-      Logger.log(cellValue);
-      sum += cellValue;
-      counter++;
-    }
-  }
-  var average = sum / counter;
-  return average;
 }
