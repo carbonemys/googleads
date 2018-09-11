@@ -9,7 +9,7 @@
 */
 
 // ** settings **
-var spreadsheetUrl = 'https://docs.google.com/spreadsheets/d/000000
+var spreadsheetUrl = 'https://docs.google.com/spreadsheets/d/000000';
 
 // ** optional settings **
 
