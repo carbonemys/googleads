@@ -1,8 +1,8 @@
 # googleads
 
 ## Instructions
-1. Copy [script](https://raw.githubusercontent.com/carbonemys/googleads/master/yo-hygene.gs)
-2. Copy template sheet ór create new spreadsheet
+1. Copy [template](https://docs.google.com/spreadsheets/d/1QCN6GQC-Qy4ccrZPYc2vIhkoiaBfbgGDw6OUR11o7Vs/copy) sheet ór create new spreadsheet
+2. Copy [script](https://raw.githubusercontent.com/carbonemys/googleads/master/yo-hygene.gs)
 3. Paste spreadsheet URL in script
 4. When running script on MCC level, enter account ID in script
 5. (optional, add custom tab name)
