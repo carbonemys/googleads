@@ -5,7 +5,7 @@
  - average runtime ~ 30 - 3600 sec.
  
  v1.02 - creates tab with account name or optional custom tab name
- copy template: https://docs.google.com/spreadsheets/d/1QCN6GQC-Qy4ccrZPYc2vIhkoiaBfbgGDw6OUR11o7Vs/edit#gid=0
+ copy template: https://docs.google.com/spreadsheets/d/1QCN6GQC-Qy4ccrZPYc2vIhkoiaBfbgGDw6OUR11o7Vs/copy
 */
 
 // ** settings **
