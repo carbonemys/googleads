@@ -33,7 +33,8 @@ var config = {
     '4+highlights',
     '4+sitelinks',
     'snippets',
-    'Good Lin Rodnitzky'
+    'Good Lin Rodnitzky',
+    'hasNoEcpcAndBidmodifier'
   ]]
 }
 
@@ -93,26 +94,27 @@ function scoreAccount() {
   var adGroupData = getAdGroupData()
   var campaignData = getCampaignData()
   var extensionData = getExtensionData()
-  var linRodnitzkyData = getLinRodnitzkyData()
+  var campaignAwqlData = getCampaignAwqlData()
   var adData = getAdData()
   
   scores.push([dateText],
-              ['//Totalscore'],
-              [accountData.hasAttributionModeling],
-              [accountData.hasNoBudgetLostImpressionShare],
-              [keywordData.hasNoLowQscoreKeywords],
-              [adGroupData.hasNoLowEtaAdgroups],
-              [adGroupData.hasNoMixedMatchtypes],
-              [adData.hasNoMissingHeadline3],
-              [adData.hasNoSta],
-              [campaignData.remarketing],
-              [campaignData.inMarket],
-              [campaignData.deviceBidding],
-              [campaignData.has4Highlights || extensionData.has4Highlights],
-              [campaignData.has4Sitelinks || extensionData.has4Sitelinks],
-              [campaignData.snippets || extensionData.hasSnippets],
-              [linRodnitzkyData.wellBalanced]
-             )
+    ['//Totalscore'],
+    [accountData.hasAttributionModeling],
+    [accountData.hasNoBudgetLostImpressionShare],
+    [keywordData.hasNoLowQscoreKeywords],
+    [adGroupData.hasNoLowEtaAdgroups],
+    [adGroupData.hasNoMixedMatchtypes],
+    [adData.hasNoMissingHeadline3],
+    [adData.hasNoSta],
+    [campaignData.remarketing],
+    [campaignData.inMarket],
+    [campaignData.deviceBidding],
+    [campaignData.has4Highlights || extensionData.has4Highlights],
+    [campaignData.has4Sitelinks || extensionData.has4Sitelinks],
+    [campaignData.snippets || extensionData.hasSnippets],
+    [campaignAwqlData.LRwellBalanced],
+    [campaignAwqlData.hasNoEcpcAndModifier]
+   )
   
   var totalScore = makeTotalScore(scores)
   scores[1] = totalScore
@@ -154,23 +156,25 @@ function getAccountRow() {
   return accountRow
 }
 
-function getLinRodnitzkyData () {
+function getCampaignAwqlData () {
   // CPA all keywords / CPA conv kewyords
   var linRodnitzkyData = []
-  var linRodnitzkyScores = {
-    wellBalanced: false
+  var campaignAwqlScores = {
+    LRwellBalanced: false,
+    hasNoEcpcAndModifier: true
   }
   var conversions = 0
   var cost = 0
   var costConvertedKeywords = 0
   
-  var campaignCostConversionData = AdWordsApp.report(
-    "SELECT Cost, Conversions " +
+  var campaignCostConversionData = AdsApp.report(
+    "SELECT Cost, Conversions, EnhancedCpcEnabled, CampaignId " +
     "FROM CAMPAIGN_PERFORMANCE_REPORT " +
     "WHERE AdvertisingChannelType = SEARCH " +
+    "AND CampaignStatus = ENABLED " +
     "DURING LAST_30_DAYS ")
   
-  var keywordCostConversionData = AdWordsApp.report(
+  var keywordCostConversionData = AdsApp.report(
     "SELECT Cost " +
     "FROM KEYWORDS_PERFORMANCE_REPORT " +
     "WHERE Conversions > 0 " +
@@ -183,9 +187,31 @@ function getLinRodnitzkyData () {
     var campaign = campaignRows.next()
     var campaignConversions = campaign['Conversions']
     var campaignCost = campaign['Cost']
+    var ecpcEnabled = campaign['EnhancedCpcEnabled']
+    var campaignId = campaign['CampaignId']
     
     conversions += parseFloat(campaignConversions)
     cost += parseFloat(campaignCost)
+    
+    if (ecpcEnabled) {
+      var bidIterator = AdsApp.campaigns()
+        .withCondition("CampaignId = '" + campaignId + "'")
+        .get()
+      
+      if (bidIterator.hasNext()) {
+        var campaignAdienceIterator = bidIterator.next().targeting().audiences().get()
+        while (campaignAdienceIterator.hasNext()) {
+          var audience = campaignAdienceIterator.next()
+          var bidModifier = audience.bidding().getBidModifier()
+          Logger.log(campaignId)
+          Logger.log(bidModifier)
+          Logger.log(bidModifier * 2)
+          if (bidModifier != 1) {
+            campaignAwqlScores.hasNoEcpcAndModifier = false
+          }
+        }
+      }
+    }
   }
   
   while (keywordRows.hasNext()) {
@@ -203,7 +229,7 @@ function getLinRodnitzkyData () {
     lRInterpretation = lRFixed + ' (conservative bidding)'
   } else if (lRRatio < 2) {
     lRInterpretation = lRFixed + ' (well balanced)'
-    linRodnitzkyScores.wellBalanced = true
+    campaignAwqlScores.LRwellBalanced = true
   } else if (lRRatio < 2.5) {
     lRInterpretation = lRFixed + ' (few converting keywords)'
   } else if (lRRatio >= 2.5) {
@@ -211,10 +237,8 @@ function getLinRodnitzkyData () {
   } else {
     lRInterpretation = 'no conversion data'
   }
-    
-  linRodnitzkyData.push([lRInterpretation])
 
-  return linRodnitzkyScores
+  return campaignAwqlScores
 }
 
 function scoresToSheet(scores) {
