@@ -10,7 +10,7 @@
 
 var config = {
   spreadsheetUrl: 'https://docs.google.com/spreadsheets/d/1YrFUIQVACA1g2VXvkiIryD-wnyilPvY_h6OtwOoa4TA/edit#gid=0',
-  accountLabel: 'Active',
+  accountLabel: 'aaa',
   rawTabName: 'data_raw',
   firstDataRow: 7,
   firstDataColumn: 1,
@@ -62,7 +62,26 @@ function main() {
     var sheet = spreadsheet.getSheetByName(config.rawTabName)
     var firstRow = config.firstDataRow
     var lastRow = config.firstDataRow + accountNames.length - 1
-    var range = sheet.getRange('A' + firstRow + ':C' + lastRow)
+    
+    var sheetLastRow = sheet.getLastRow()
+    
+    // delete old rows with same label
+    
+    var labelColumn = 3
+    var range = sheet.getRange(config.firstDataRow, labelColumn, sheetLastRow, 1)
+    var labelValues = range.getValues()
+    var offset = -1
+    for (i = 0; i < labelValues.length; i++) {
+      if (labelValues[i] == config.accountLabel) {
+        sheet.deleteRow(config.firstDataRow + i + 1 + offset)
+        offset--
+      }
+    }
+    
+    // add names
+    // var range = sheet.getRange('A' + firstRow + ':C' + lastRow)
+    Logger.log(sheetLastRow + accountNames.length)
+    var range = sheet.getRange(sheetLastRow + 1, 1, accountNames.length, 3)
     range.setValues(accountNames)
     
     // apply header names
