@@ -12,9 +12,18 @@
  - weekday conversions
  - hourday conversions
  - inMarket account
+ - hasStoreVisits (testen)
+ - mobile & tablet adjustments
+ - has YouTube views (gekoppeld of gekoppeld geweest)
+ - roas and ecpc
  
  todo
  - rm all allData stuff
+ - extensies ook op adgroup niveau
+ - adgroups met RSA (GAQL)
+ - ETAs minder dan 2 en minder dan 3
+ - keywords per quality score
+ 
  
  v2.00 - creates tab with account name or optional custom tab name
  copy template: https://docs.google.com/spreadsheets/d/1QCN6GQC-Qy4ccrZPYc2vIhkoiaBfbgGDw6OUR11o7Vs/copy
@@ -68,6 +77,8 @@ function createHI () {
 
   var campaignData = getCampaignData()
   
+  var campaignGaqlData = getCampaignGaqlData()
+  
   var extensionData = getExtensionData()
 
   var shoppingData = getShoppingData()
@@ -76,6 +87,8 @@ function createHI () {
   
   var hourOfDayData = getHourOfDayData()
   
+  var videoData = getVideoData()
+  
   var allDataOverview = [
     accountData,
     deviceData,
@@ -83,8 +96,10 @@ function createHI () {
     keywordData,
     adGroupData,
     campaignData,
+    campaignGaqlData,
     extensionData,
     shoppingData,
+    videoData,
     weekdayData,
     hourOfDayData
   ]
@@ -153,6 +168,7 @@ function getAccountData () {
   var gadsConversions = 0
   var analyticsConversions = 0
   var hasAttributionModelling = 'No'
+  var hasStoreVisits = 'No'
   
   // check for conversions in last 30 days
   var accountConversions = parseFloat(AdWordsApp.currentAccount().getStatsFor('LAST_30_DAYS').getConversions())
@@ -191,8 +207,10 @@ function getAccountData () {
     var conversionSource = row['ExternalConversionSource']
     if (conversionSource == 'Analytics') {
       analyticsConversions++
-    } else if (conversionSource == 'Website') {
+    } else if (conversionSource === 'Website') {
       gadsConversions++
+    } else if (conversionSource === 'Store visits') {
+      hasStoreVisits = 'Yes'
     }
   }
   
@@ -207,6 +225,7 @@ function getAccountData () {
   accountData.push(['Conversion tracking', '', ''])
   accountData.push(['Google Ads conversions', gadsConversions + '/' + totalConversions])
   accountData.push(['Analytics conversions', analyticsConversions + '/' + totalConversions])
+  accountData.push(['Has store visits', hasStoreVisits])
   accountData.push(['Has attribution model (x % 1 = 0)', hasAttributionModelling])
   
   return accountData
@@ -351,6 +370,7 @@ function getCampaignData () {
   var rotationData = []
   var negativeKeywordListData = []
   var deviceData = []
+  var tabletData = []
   
   // bidding variables
   var manualData = []
@@ -431,13 +451,19 @@ function getCampaignData () {
     // check for ad schedules
     var adScheduleIterator = campaign.targeting().adSchedules().get()
     if (adScheduleIterator.totalNumEntities() === 0) {
-      adScheduleData.push([campaignName, ' ', ' '])
+      adScheduleData.push([campaignName, '', ''])
     }
     
-    // check for device settings
+    // check for mobile settings
     var deviceIterator = campaign.targeting().platforms().mobile().get().next()
     if (deviceIterator.getBidModifier() != '1.0') {
-      deviceData.push([campaignName, ' ', ' '])
+      deviceData.push([campaignName, '', ''])
+    }
+    
+    // check for tablet settings
+    var tabletIterator = campaign.targeting().platforms().tablet().get().next()
+    if (tabletIterator.getBidModifier() != '1.0') {
+      tabletData.push([campaignName, '', ''])
     }
     
     // check for experiments
@@ -481,6 +507,7 @@ function getCampaignData () {
   campaignData.push(['Campaigns with no ad rotation', rotationData.length + '/' + totalCampaigns])
   campaignData.push(['Campaigns with no negative keyword list', negativeKeywordListData.length + '/' + totalCampaigns])
   campaignData.push(['Campaigns mobile bid adjustments', deviceData.length + '/' + totalCampaigns])
+  campaignData.push(['Campaigns tablet bid adjustments', tabletData.length + '/' + totalCampaigns])
   campaignData.push(['Campaigns with manual cpc', manualData.length + '/' + totalCampaigns])
   campaignData.push(['Campaigns with target CPA', cpaData.length + '/' + totalCampaigns])
   campaignData.push(['Campaigns with conversion optimizer', conversionOptimizerData.length + '/' + totalCampaigns])
@@ -621,121 +648,6 @@ function getLinRodnitzkyData () {
   getLinRodnitzkyData.push(['Lin Rodnitzky Ratio', lRInterpretation])
   
   return getLinRodnitzkyData
-}
-
-function getHourOfDayData () {
-  // CPA all keywords / CPA conv kewyords
-  var hourOfDayData = []
-  
-  // this is dirty, use sort function
-  var conversionsHour = {
-    '0': 0,
-    '1': 0,
-    '2': 0,
-    '3': 0,
-    '4': 0,
-    '5': 0,
-    '6': 0,
-    '7': 0,
-    '8': 0,
-    '9': 0,
-    '10': 0,
-    '11': 0,
-    '12': 0,
-    '13': 0,
-    '14': 0,
-    '15': 0,
-    '16': 0,
-    '17': 0,
-    '18': 0,
-    '19': 0,
-    '20': 0,
-    '21': 0,
-    '22': 0,
-    '23': 0
-  }
-  
-  var hourOfDayReport = AdWordsApp.report(
-    "SELECT Conversions, HourOfDay " +
-    "FROM ACCOUNT_PERFORMANCE_REPORT " +
-    "DURING LAST_30_DAYS ")
-  
-  var hourOfDayRows = hourOfDayReport.rows()
-  
-  while (hourOfDayRows.hasNext()) {
-    var hourRow = hourOfDayRows.next()
-    var hour = hourRow['HourOfDay']
-    var conversions = hourRow['Conversions']
-    conversionsHour[hour.toString()] = parseFloat(conversions)
-  }
-    
-  hourOfDayData.push(['Hour of day', 'Conversions'])
-  hourOfDayData.push(['0', conversionsHour[0]])
-  hourOfDayData.push(['1', conversionsHour[1]])
-  hourOfDayData.push(['2', conversionsHour[2]])
-  hourOfDayData.push(['3', conversionsHour[3]])
-  hourOfDayData.push(['4', conversionsHour[4]])
-  hourOfDayData.push(['5', conversionsHour[5]])
-  hourOfDayData.push(['6', conversionsHour[6]])
-  hourOfDayData.push(['7', conversionsHour[7]])
-  hourOfDayData.push(['8', conversionsHour[8]])
-  hourOfDayData.push(['9', conversionsHour[9]])
-  hourOfDayData.push(['10', conversionsHour[10]])
-  hourOfDayData.push(['11', conversionsHour[11]])
-  hourOfDayData.push(['12', conversionsHour[12]])
-  hourOfDayData.push(['13', conversionsHour[13]])
-  hourOfDayData.push(['14', conversionsHour[14]])
-  hourOfDayData.push(['15', conversionsHour[15]])
-  hourOfDayData.push(['16', conversionsHour[16]])
-  hourOfDayData.push(['17', conversionsHour[17]])
-  hourOfDayData.push(['18', conversionsHour[18]])
-  hourOfDayData.push(['19', conversionsHour[19]])
-  hourOfDayData.push(['20', conversionsHour[20]])
-  hourOfDayData.push(['21', conversionsHour[21]])
-  hourOfDayData.push(['22', conversionsHour[22]])
-  hourOfDayData.push(['23', conversionsHour[23]])
-
-  return hourOfDayData
-}
-
-function getWeekdayData () {
-  // CPA all keywords / CPA conv kewyords
-  var weekdayData = []
-  
-  var conversionsPerWeek = {
-    Monday: 0,
-    Tuesday: 0,
-    Wednesday: 0,
-    Thursday: 0,
-    Friday: 0,
-    Saturday: 0,
-    Sunday: 0
-  }
-  
-  var weekdayReport = AdWordsApp.report(
-    "SELECT Conversions, DayOfWeek " +
-    "FROM ACCOUNT_PERFORMANCE_REPORT " +
-    "DURING LAST_30_DAYS ")
-  
-  var weekdayRows = weekdayReport.rows()
-  
-  while (weekdayRows.hasNext()) {
-    var dayRow = weekdayRows.next()
-    var day = dayRow['DayOfWeek']
-    var conversions = dayRow['Conversions']
-    conversionsPerWeek[day] = parseFloat(conversions)
-  }
-    
-  weekdayData.push(['Day of week', 'Conversions'])
-  weekdayData.push(['Monday', conversionsPerWeek['Monday']])
-  weekdayData.push(['Tuesday', conversionsPerWeek['Tuesday']])
-  weekdayData.push(['Wednesday', conversionsPerWeek['Wednesday']])
-  weekdayData.push(['Thursday', conversionsPerWeek['Thursday']])
-  weekdayData.push(['Friday', conversionsPerWeek['Friday']])
-  weekdayData.push(['Saturday', conversionsPerWeek['Saturday']])
-  weekdayData.push(['Sunday', conversionsPerWeek['Sunday']])
-
-  return weekdayData
 }
 
 function createAverageFromRange(stringRange) {
@@ -921,4 +833,185 @@ function addDate(activeSheet) {
   var firstCell = activeSheet.getRange('A1:A1')
   firstCell.setNumberFormat('@') // set cell as text
   firstCell.setValues([[dateText]])
+}
+
+function gaqlToday() {
+  var dateToday = new Date()
+  var dateText = Utilities.formatDate(dateToday, 'Europe/Amsterdam', 'yyyyMMdd')
+  return dateText
+}
+function getCampaignGaqlData () {
+  // CPA all keywords / CPA conv kewyords
+  var campaignData = []
+  var totalCampaigns = 0
+  var totalECpcCampaigns = 0
+  var totalRoasCampaigns = 0
+  
+  var campaignReport = AdsApp.report(
+    "SELECT EnhancedCpcEnabled, BiddingStrategyType " +
+    "FROM CAMPAIGN_PERFORMANCE_REPORT " +
+    "WHERE CampaignStatus = ENABLED " +
+    "DURING LAST_7_DAYS ")
+  
+  var campaignRows = campaignReport.rows()
+  
+  while (campaignRows.hasNext()) {
+    var campaignRow = campaignRows.next()
+    var eCpcEnabled = campaignRow['EnhancedCpcEnabled']
+    var biddingStrategy = campaignRow['BiddingStrategyType']
+    totalCampaigns++
+    if (eCpcEnabled !== 'false') {
+      totalECpcCampaigns++
+    }
+    if (biddingStrategy === 'Target ROAS') {
+      totalRoasCampaigns++
+    }
+  }
+  
+  campaignData.push(['Campaigns with eCpc', totalECpcCampaigns + '/' + totalCampaigns])
+  campaignData.push(['Campaigns with ROAS', totalRoasCampaigns + '/' + totalCampaigns])
+
+  return campaignData
+}
+
+function getVideoData () {
+  // CPA all keywords / CPA conv kewyords
+  var videoData = []
+  
+  var hasViews = 'No'
+  
+  var videoReport = AdsApp.report(
+    "SELECT VideoViews " +
+    "FROM VIDEO_PERFORMANCE_REPORT " +
+    "DURING 20150101, " + gaqlToday())
+  
+  var videoRows = videoReport.rows()
+  
+  while (videoRows.hasNext()) {
+    var videoRow = videoRows.next()
+    var views = videoRow['VideoViews']
+    if (views > 0) {
+      hasViews = 'Yes'
+    }
+  }
+  
+  videoData.push(['YouTube', ''])
+  videoData.push(['Has YouTube views (via link)', hasViews])
+
+  return videoData
+}
+
+function getHourOfDayData () {
+  // CPA all keywords / CPA conv kewyords
+  var hourOfDayData = []
+  
+  // this is dirty, use sort function
+  var conversionsHour = {
+    '0': 0,
+    '1': 0,
+    '2': 0,
+    '3': 0,
+    '4': 0,
+    '5': 0,
+    '6': 0,
+    '7': 0,
+    '8': 0,
+    '9': 0,
+    '10': 0,
+    '11': 0,
+    '12': 0,
+    '13': 0,
+    '14': 0,
+    '15': 0,
+    '16': 0,
+    '17': 0,
+    '18': 0,
+    '19': 0,
+    '20': 0,
+    '21': 0,
+    '22': 0,
+    '23': 0
+  }
+  
+  var hourOfDayReport = AdWordsApp.report(
+    "SELECT Conversions, HourOfDay " +
+    "FROM ACCOUNT_PERFORMANCE_REPORT " +
+    "DURING LAST_30_DAYS ")
+  
+  var hourOfDayRows = hourOfDayReport.rows()
+  
+  while (hourOfDayRows.hasNext()) {
+    var hourRow = hourOfDayRows.next()
+    var hour = hourRow['HourOfDay']
+    var conversions = hourRow['Conversions']
+    conversionsHour[hour.toString()] = parseFloat(conversions)
+  }
+    
+  hourOfDayData.push(['Hour of day', 'Conversions'])
+  hourOfDayData.push(['0', conversionsHour[0]])
+  hourOfDayData.push(['1', conversionsHour[1]])
+  hourOfDayData.push(['2', conversionsHour[2]])
+  hourOfDayData.push(['3', conversionsHour[3]])
+  hourOfDayData.push(['4', conversionsHour[4]])
+  hourOfDayData.push(['5', conversionsHour[5]])
+  hourOfDayData.push(['6', conversionsHour[6]])
+  hourOfDayData.push(['7', conversionsHour[7]])
+  hourOfDayData.push(['8', conversionsHour[8]])
+  hourOfDayData.push(['9', conversionsHour[9]])
+  hourOfDayData.push(['10', conversionsHour[10]])
+  hourOfDayData.push(['11', conversionsHour[11]])
+  hourOfDayData.push(['12', conversionsHour[12]])
+  hourOfDayData.push(['13', conversionsHour[13]])
+  hourOfDayData.push(['14', conversionsHour[14]])
+  hourOfDayData.push(['15', conversionsHour[15]])
+  hourOfDayData.push(['16', conversionsHour[16]])
+  hourOfDayData.push(['17', conversionsHour[17]])
+  hourOfDayData.push(['18', conversionsHour[18]])
+  hourOfDayData.push(['19', conversionsHour[19]])
+  hourOfDayData.push(['20', conversionsHour[20]])
+  hourOfDayData.push(['21', conversionsHour[21]])
+  hourOfDayData.push(['22', conversionsHour[22]])
+  hourOfDayData.push(['23', conversionsHour[23]])
+
+  return hourOfDayData
+}
+
+function getWeekdayData () {
+  // CPA all keywords / CPA conv kewyords
+  var weekdayData = []
+  
+  var conversionsPerWeek = {
+    Monday: 0,
+    Tuesday: 0,
+    Wednesday: 0,
+    Thursday: 0,
+    Friday: 0,
+    Saturday: 0,
+    Sunday: 0
+  }
+  
+  var weekdayReport = AdWordsApp.report(
+    "SELECT Conversions, DayOfWeek " +
+    "FROM ACCOUNT_PERFORMANCE_REPORT " +
+    "DURING LAST_30_DAYS ")
+  
+  var weekdayRows = weekdayReport.rows()
+  
+  while (weekdayRows.hasNext()) {
+    var dayRow = weekdayRows.next()
+    var day = dayRow['DayOfWeek']
+    var conversions = dayRow['Conversions']
+    conversionsPerWeek[day] = parseFloat(conversions)
+  }
+    
+  weekdayData.push(['Day of week', 'Conversions'])
+  weekdayData.push(['Monday', conversionsPerWeek['Monday']])
+  weekdayData.push(['Tuesday', conversionsPerWeek['Tuesday']])
+  weekdayData.push(['Wednesday', conversionsPerWeek['Wednesday']])
+  weekdayData.push(['Thursday', conversionsPerWeek['Thursday']])
+  weekdayData.push(['Friday', conversionsPerWeek['Friday']])
+  weekdayData.push(['Saturday', conversionsPerWeek['Saturday']])
+  weekdayData.push(['Sunday', conversionsPerWeek['Sunday']])
+
+  return weekdayData
 }
