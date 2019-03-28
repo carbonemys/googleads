@@ -9,8 +9,8 @@
 */
 
 var config = {
-  spreadsheetUrl: 'https://docs.google.com/spreadsheets/d/1YrFUIQVACA1g2VXvkiIryD-wnyilPvY_h6OtwOoa4TA/edit#gid=0',
-  accountLabel: 'aaa',
+  spreadsheetUrl: 'https://docs.google.com/spreadsheets/d/1UbElU-vcEHTOkfYKKLony46f45jHBv-5KivWZA2ckZY/edit#gid=0',
+  accountLabel: 'JW',
   rawTabName: 'data_raw',
   firstDataRow: 7,
   firstDataColumn: 1,
@@ -44,7 +44,7 @@ function main() {
   Logger.log('Start accountScore script')
   
   // create rows with ids and run script per account
-  try {
+  // try {
     var accountSelector = AdsManagerApp
       .accounts()
       .withCondition("LabelNames CONTAINS '" + config.accountLabel + "'")
@@ -68,6 +68,7 @@ function main() {
     // delete old rows with same label
     
     var labelColumn = 3
+    Logger.log(config.firstDataRow + ' ' + labelColumn + ' '  + sheetLastRow + ' '  + 1)
     var range = sheet.getRange(config.firstDataRow, labelColumn, sheetLastRow, 1)
     var labelValues = range.getValues()
     var offset = -1
@@ -77,6 +78,9 @@ function main() {
         offset--
       }
     }
+
+  	// last row after deletes
+    var sheetLastRow = sheet.getLastRow()
     
     // add names
     // var range = sheet.getRange('A' + firstRow + ':C' + lastRow)
@@ -92,10 +96,10 @@ function main() {
       .accounts()
       .withCondition("LabelNames CONTAINS '" + config.accountLabel + "'")
       .executeInParallel('scoreAccount')
-  } catch(err) {
-    Logger.log('Error: ' + err)
+  //} catch(err) {
+  //  Logger.log('Error: ' + err)
     // account level run or error
-  } 
+  //} 
 }
 
 function scoreAccount() {
@@ -160,14 +164,15 @@ function getAccountRow() {
   var accountId = AdsApp.currentAccount().getCustomerId()
   var sheet = spreadsheet.getSheetByName(config.rawTabName)
   var firstCheckRow = config.firstDataRow
-  var maxAccounts = 50
-  var lastCheckRow = config.firstDataRow + maxAccounts - 1
-  var checkRange = sheet.getRange('B' + firstCheckRow + ':B' + lastCheckRow)
+  var currentRows = sheet.getLastRow() + 1 - config.firstDataRow
+  //var maxAccounts = 1000
+  var lastCheckRow = config.firstDataRow + currentRows
+  var checkRange = sheet.getRange(firstCheckRow, 2, lastCheckRow, 1)
   var checkRangeValues = checkRange.getValues()
   
   var accountRow
   
-  for (i = 0; i < maxAccounts; i++) {
+  for (i = 0; i < currentRows; i++) {
     if (checkRangeValues[i][0] == accountId) {
       accountRow = i + firstCheckRow
     }
@@ -222,9 +227,9 @@ function getCampaignAwqlData () {
         while (campaignAdienceIterator.hasNext()) {
           var audience = campaignAdienceIterator.next()
           var bidModifier = audience.bidding().getBidModifier()
-          Logger.log(campaignId)
-          Logger.log(bidModifier)
-          Logger.log(bidModifier * 2)
+          // Logger.log(campaignId)
+          // Logger.log(bidModifier)
+          // Logger.log(bidModifier * 2)
           if (bidModifier != 1) {
             campaignAwqlScores.hasNoEcpcAndModifier = false
           }
@@ -264,6 +269,7 @@ function scoresToSheet(scores) {
   var accountRow = getAccountRow()
   var sheet = spreadsheet.getSheetByName(config.rawTabName)
   var numberOfScores = scores.length
+  // Logger.log(accountRow)
   var range = sheet.getRange(accountRow, 4, 1, numberOfScores)
   range.setValues([scores])
 }
@@ -373,7 +379,7 @@ function getAdGroupData () {
 
     if (EtaIterator.totalNumEntities() < 3) {
       adGroupEtaData.push([campaignName, adGroupName, ' '])
-      adGroupScores.hasLowEtaAdgroups = false
+      adGroupScores.hasNoLowEtaAdgroups = false
     }
 
     // mixed match types
@@ -439,7 +445,7 @@ function getAdData () {
     var headline3 = eta.asType().expandedTextAd().getHeadlinePart3()
     if (headline3 === null) {
       adHeadline3Data = false
-      adScores.hasMissingHeadline3 = false
+      adScores.hasNoMissingHeadline3 = false
     }
   }
   
@@ -481,7 +487,7 @@ function getCampaignData () {
     has4Sitelinks: true,
     snippets: true,
     has4Highlights: true,
-    deviceBidding: true
+    deviceBidding: false
   }
   
   var sitelinkData = [];
@@ -538,8 +544,8 @@ function getCampaignData () {
     
     // check for device settings
     var deviceIterator = campaign.targeting().platforms().mobile().get().next()
-    if (deviceIterator.getBidModifier() === '1.0') {
-      campaignScores.deviceBidding = false
+    if (deviceIterator.getBidModifier() !== 1) {
+      campaignScores.deviceBidding = true
     }
 
   }
