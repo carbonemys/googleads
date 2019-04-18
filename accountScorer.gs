@@ -1,7 +1,8 @@
 /*
   true = good
   
-  no template required
+  - no template required (fill in Name @ a6)
+  - tab name should be data_raw
   
   todo:
   delete every label row before beginning
