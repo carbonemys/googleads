@@ -10,8 +10,8 @@
 */
 
 var config = {
-  spreadsheetUrl: 'https://docs.google.com/spreadsheets/d/1UbElU-vcEHTOkfYKKLony46f45jHBv-5KivWZA2ckZY/edit#gid=0',
-  accountLabel: 'JW',
+  spreadsheetUrl: 'https://docs.google.com/spreadsheets/d/id',
+  accountLabel: 'labelName',
   rawTabName: 'data_raw',
   firstDataRow: 7,
   firstDataColumn: 1,
@@ -35,7 +35,8 @@ var config = {
     '4+sitelinks',
     'snippets',
     'Good Lin Rodnitzky',
-    'hasNoEcpcAndBidmodifier'
+    'hasNoEcpcAndBidmodifier',
+    'clicksBadCountries'
   ]]
 }
 
@@ -119,6 +120,7 @@ function scoreAccount() {
   var campaignData = getCampaignData()
   var extensionData = getExtensionData()
   var campaignAwqlData = getCampaignAwqlData()
+  var geoData = getGeoData()
   var adData = getAdData()
   
   scores.push([dateText],
@@ -137,7 +139,8 @@ function scoreAccount() {
     [campaignData.has4Sitelinks || extensionData.has4Sitelinks],
     [campaignData.snippets || extensionData.hasSnippets],
     [campaignAwqlData.LRwellBalanced],
-    [campaignAwqlData.hasNoEcpcAndModifier]
+    [campaignAwqlData.hasNoEcpcAndModifier],
+    [geoData.badCountryClicks]
    )
   
   var totalScore = makeTotalScore(scores)
@@ -179,6 +182,27 @@ function getAccountRow() {
     }
   }
   return accountRow
+}
+
+function getGeoData () {
+  var geoScores = {
+    badCountryClicks: false
+  }
+  
+  // Saudi Arabia, Turkey, India, Iraq, Indonesia
+  var geoData = AdsApp.report(
+  "SELECT Clicks, CountryCriteriaId, LocationType, IsTargetingLocation, CampaignName " +
+  "FROM GEO_PERFORMANCE_REPORT " +
+  "WHERE IsTargetingLocation IN [false] " +
+  "AND CountryCriteriaId IN [2682, 2792, 2356, 2368, 2360] " +
+  "DURING LAST_30_DAYS")
+  
+  var geoRows = geoData.rows()
+  if (geoRows.hasNext()) {
+    geoScores.badCountryClicks = true
+  }
+  
+  return geoScores
 }
 
 function getCampaignAwqlData () {
@@ -324,7 +348,7 @@ function getAccountData () {
 function getKeywordData() {
   var keywordData = []
   var keywordScores = {
-    hasNoLowQscoreKeywords: false
+    hasNoLowQscoreKeywords: true
   }
   var lowQscoreCount = 0
   
@@ -342,7 +366,7 @@ function getKeywordData() {
     var minQscore = 4
     if (qscore !== null && parseFloat(qscore) < minQscore) {
       lowQscoreCount++
-      keywordScores.hasNoLowQscoreKeywords = true
+      keywordScores.hasNoLowQscoreKeywords = false
     }
   }
   return keywordScores
