@@ -1,4 +1,17 @@
 /*
+  (auto) bid to position
+  
+  This script:
+  - Checks lost budget impression share per campaign.
+  - If this is more than 25% (so limited by budget)
+     => aim for bottom
+  - If this is between 0% and 20%
+     => aim for subtop
+  - If this is 0%
+     => aim for top
+  - For each keyword, if one position has 50%+ cpc is raised
+      or lowered with 20% to get to the right position
+
   CHECK LOGS
 
   todos:
@@ -6,17 +19,21 @@
   - handle NaN
   - matchtype different strategies
   - reevaluate >.5
+  - summary of changes
+  
+  version: 2019-06-03
 */
 
 var settings = {
   accoundId: '',
   dateRange: 'LAST_30_DAYS',
-  minImpressions: 3,
+  minImpressions: 3, // does not work yet
   bidAdjustment: .20,
   minStrategySize: .5,
   
   // 'absTop', 'top' or 'bottom'
   // leave empty for auto strategy
+  // does not work yet
   manualStrategy: '',
 }
 
@@ -27,7 +44,7 @@ function main () {
 function bidPos () {
 
   var campaignsReport = AdsApp.report(
-    'select SearchBudgetLostImpressionShare, CampaignId ' +
+    'select SearchBudgetLostImpressionShare, CampaignId, CampaignName ' +
     'from CAMPAIGN_PERFORMANCE_REPORT ' +
     'where AdvertisingChannelType = SEARCH ' +
     'and CampaignStatus = ENABLED ' +
@@ -39,25 +56,27 @@ function bidPos () {
   while (campaignRows.hasNext()) {
     var campaign = campaignRows.next()
     var campaignId= campaign['CampaignId']
+    var campaignName = campaign['CampaignName']
     var lostImpressionShare = parseFloat(campaign['SearchBudgetLostImpressionShare'])/100
-    
-    Logger.log(campaignId + ' ' + parseFloat(lostImpressionShare))
     
     var strategy = ''
     
     if (lostImpressionShare == 0) {
       strategy = 'absTop'
-    } else if (lostImpressionShare < .2) {
+    } else if (lostImpressionShare < .25) {
       strategy = 'top'
-    } else if (lostImpressionShare >= .2) {
+    } else if (lostImpressionShare >= .25) {
       strategy = 'bottom'
     }
     
+    Logger.log('> ' + campaignName + ' lost impshare: ' + parseFloat(lostImpressionShare))
+    Logger.log('> bid for ' + strategy)
+    
     bidding(campaignId, strategy)
     
-    // +40% => bottom
-    // 0-20% => top
-    // 0% => bottom
+    // +25% => bottom
+    // 0-25% => top
+    // 0% => absTop
   }
 }
 
@@ -102,7 +121,7 @@ function bidding (campaignId, strategy) {
     Logger.log('bottom: ' + bottomImpressions)
     Logger.log('LOST  : ' + noImpressions)
     Logger.log('CHECK : ' + checkTest)
-    Logger.log('---')
+    // Logger.log('---')
 
     var keywordSelector = AdsApp.keywords().withIds([keywordId]).get()
     var keyword = keywordSelector.next()
@@ -139,5 +158,7 @@ function bidding (campaignId, strategy) {
         Logger.log('cpc: ' + currentCpc + ' - new cpc: ' + newCpc + ' - strategy: ' + strategy)
       }
     }
+    
+    Logger.log('---')
   }
 }
