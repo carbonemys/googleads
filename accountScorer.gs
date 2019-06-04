@@ -10,8 +10,8 @@
 */
 
 var config = {
-  spreadsheetUrl: 'https://docs.google.com/spreadsheets/d/id',
-  accountLabel: 'labelName',
+  spreadsheetUrl: 'https://docs.google.com/spreadsheets/d/123abc/edit#gid=123213',
+  accountLabel: 'abc',
   rawTabName: 'data_raw',
   firstDataRow: 7,
   firstDataColumn: 1,
@@ -26,6 +26,7 @@ var config = {
     'hasNoLowQscoreKeywords',
     'hasNoLowEtaAdgroups',
     'hasNoMixedMatchtypes',
+    'hasNoMissingRsas',
     'hasNoMissingHeadline3',
     'hasNoSta',
     'remarketing',
@@ -34,9 +35,7 @@ var config = {
     '4+highlights',
     '4+sitelinks',
     'snippets',
-    'Good Lin Rodnitzky',
-    'hasNoEcpcAndBidmodifier',
-    'clicksBadCountries'
+    'noClicksBadCountries'
   ]]
 }
 
@@ -130,6 +129,7 @@ function scoreAccount() {
     [keywordData.hasNoLowQscoreKeywords],
     [adGroupData.hasNoLowEtaAdgroups],
     [adGroupData.hasNoMixedMatchtypes],
+    [adGroupData.hasNoMissingRsas],
     [adData.hasNoMissingHeadline3],
     [adData.hasNoSta],
     [campaignData.remarketing],
@@ -138,8 +138,6 @@ function scoreAccount() {
     [campaignData.has4Highlights || extensionData.has4Highlights],
     [campaignData.has4Sitelinks || extensionData.has4Sitelinks],
     [campaignData.snippets || extensionData.hasSnippets],
-    [campaignAwqlData.LRwellBalanced],
-    [campaignAwqlData.hasNoEcpcAndModifier],
     [geoData.badCountryClicks]
    )
   
@@ -376,7 +374,8 @@ function getAdGroupData () {
   var adGroupData = []
   var adGroupScores = {
     hasNoLowEtaAdgroups: true,
-    hasNoMixedMatchtypes: true
+    hasNoMixedMatchtypes: true,
+    hasNoMissingRsas: true,
   }
   
   var adGroupEtaData = []
@@ -405,6 +404,16 @@ function getAdGroupData () {
     if (EtaIterator.totalNumEntities() < 3) {
       adGroupEtaData.push([campaignName, adGroupName, ' '])
       adGroupScores.hasNoLowEtaAdgroups = false
+    }
+    
+    // versatile (RSA) ads
+    var rsaIterator = adGroup.ads()
+      .withCondition('Status = ENABLED')
+   	  .withCondition('Type = VERSATILE_TEXT_AD')
+      .get()
+
+    if (rsaIterator.totalNumEntities() < 1) {
+      adGroupScores.hasNoMissingRsas = false
     }
 
     // mixed match types
