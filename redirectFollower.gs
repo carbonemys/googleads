@@ -1,13 +1,19 @@
 /*
-  WIP v2 w/h GAQL
+  Redirect follower v2 by Bas Baudoin
+  
+  Instructions:
+  - MCC script
+  - Change account ID
+  - Run example, check logs
   
   Todos
-  Non-domain urls
-  
-  Sources: https://stackoverflow.com/questions/27098169/what-google-appsscript-method-is-used-to-get-the-url-of-a-redirect
+  - Non-domain urls
+  - Extensions
 */
 
 var accountId = 'XXX-XXX-XXX'
+
+// placeholders
 var urlCombos = {}
 var checkedUrls = {}
 
