@@ -1,22 +1,20 @@
 /*
-  ETA ONLY FOR NOW
-  TODO:
-  - 
+  WIP v2 w/h GAQL
+  
+  Todos
+  Non-domain urls
   
   Sources: https://stackoverflow.com/questions/27098169/what-google-appsscript-method-is-used-to-get-the-url-of-a-redirect
 */
 
 var dateRange = 'TODAY';          // e.g. TODAY, YESTERDAY, LAST_7_DAYS
+var urlCombos = {}
+var checkedUrls = {}
 
 // functions - do not alter ************************************************************
 
 function main() {
-  var urls = getActiveUrls()
-  Logger.log(urls)
-
-  if (Object.keys(urls).length > 0) {
-    updateAds(urls)
-  }
+  updateAds()
 }
 
 function updateAds(urls) {
@@ -24,26 +22,34 @@ function updateAds(urls) {
     .withCondition('Status = ENABLED')
     .withCondition("AdGroupStatus = ENABLED")
     .withCondition("CampaignStatus = ENABLED")
-    .withCondition("Type IN [EXPANDED_TEXT_AD]")
+    .withCondition("Type IN [EXPANDED_TEXT_AD, VERSATILE_TEXT_AD]")
     .get()
-  
-   while (adSelector.hasNext()) {
-     var ad = adSelector.next()
-     var finalUrl = ad.urls().getFinalUrl()
-     var adGroup = ad.getAdGroup()
-     var eta = ad.asType().expandedTextAd()
-     var rsa = ad.asType().responsiveSearchAd()
+
+  while (adSelector.hasNext()) {
+    var ad = adSelector.next()
+    var finalUrl = ad.urls().getFinalUrl()
+    var adGroup = ad.getAdGroup()
+    var adType = ad.getType()
+
+    // check url availability or add to objects
+    findRedirectUrl(finalUrl)
+    var hasNewUrl = urlCombos[finalUrl]
+    var hasNoNewUrl = checkedUrls[finalUrl]
+    
+    if (hasNewUrl) {
+      Logger.log('has new url!')
      
-     // optional values
-     var path1 = eta.getPath1() || ''
-     var path2 = eta.getPath2() || ''
-     var headline3 = eta.getHeadlinePart3() || ''
-     var description2 = eta.getDescription2() || ''
+      // Recreate ETA
+      if (adType == 'EXPANDED_TEXT_AD') {
+        Logger.log('new eta')
+        var eta = ad.asType().expandedTextAd()
 
-     var hasNewUrl = urls[finalUrl]
+        var path1 = eta.getPath1() || ''
+        var path2 = eta.getPath2() || ''
+        var headline3 = eta.getHeadlinePart3() || ''
+        var description2 = eta.getDescription2() || ''
 
-     if (hasNewUrl) {
-       Logger.log('ad: ' + finalUrl + ' - ' + hasNewUrl)
+        Logger.log('ad: ' + finalUrl + ' - ' + hasNewUrl)
 
         var adOperation = adGroup.newAd().expandedTextAdBuilder()
           .withHeadlinePart1(eta.getHeadlinePart1())
@@ -56,42 +62,49 @@ function updateAds(urls) {
           .withFinalUrl(hasNewUrl)
           .build()
         ad.pause()
-     }
-  }
-}
 
-function getActiveUrls() {
-  var oneAccountObject = {}
-  var oneAccountString = ""
-  
-  var finalRows = AdWordsApp.report(
-    " SELECT EffectiveFinalUrl, Impressions " +
-    " FROM FINAL_URL_REPORT " + 
-    " WHERE Impressions > 0 " +
-    " DURING " + dateRange)
-  
-  var rows = finalRows.rows() // runs through awql
-  
-  while (rows.hasNext()) {
-    var row = rows.next()
-    var finalUrl = row['EffectiveFinalUrl']
-    
-    var response = UrlFetchApp.fetch(finalUrl, { followRedirects: false, muteHttpExceptions: true })
-    var responseCode = response.getResponseCode()
-    var newUrl = response.getHeaders()['Location']
+        // Recreate RSA
+      } else if (adType == 'VERSATILE_TEXT_AD') {
+        var rsa = ad.asType().responsiveSearchAd()
 
-    if (!responseCode) {
-      Logger.log('no response code')
+        var headlines = rsa.getHeadlines()
+        var descriptions = rsa.getDescriptions()
 
-      // redirect starts with 3
-    } else if (responseCode.toString()[0] == '3') {
-        if (newUrl.indexOf('http') >= 0) {
-          oneAccountObject[String(finalUrl)] = newUrl
-          // Logger.log(finalUrl + " response code " + responseCode + " \n")
-        } else {
-          Logger.log(newUrl + ' does not contain http')
-        }
+        var rsaOperation = adGroup.newAd().responsiveSearchAdBuilder()
+          .withHeadlines(headlines)
+          .withDescriptions(descriptions)
+          .withFinalUrl(finalUrl)
+          .build()
+        ad.pause()
+      }
     }
   }
-  return oneAccountObject
+  Logger.log('Final results')
+  Logger.log(urlCombos)
+  Logger.log(checkedUrls)
+}
+
+function findRedirectUrl(finalUrl) {
+  if (urlCombos[finalUrl]) {
+    return false
+  }
+  
+  var response = UrlFetchApp.fetch(finalUrl, { followRedirects: false, muteHttpExceptions: true })
+  var responseCode = response.getResponseCode()
+  var newUrl = response.getHeaders()['Location']
+
+  if (!responseCode) {
+    Logger.log('no response code')
+
+    // redirect starts with 3
+  } else if (responseCode.toString()[0] == '3') {
+    if (newUrl.indexOf('http') >= 0) {
+      urlCombos[finalUrl] = newUrl
+      return true
+    } else {
+      checkedUrls[finalUrl] = 0
+      //Logger.log(newUrl + ' does not contain http')
+    }
+  }
+  return false
 }
