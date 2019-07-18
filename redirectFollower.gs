@@ -7,8 +7,7 @@
   Sources: https://stackoverflow.com/questions/27098169/what-google-appsscript-method-is-used-to-get-the-url-of-a-redirect
 */
 
-var accountId = '598-056-8272'
-var dateRange = 'TODAY';          // e.g. TODAY, YESTERDAY, LAST_7_DAYS
+var accountId = 'XXX-XXX-XXX'
 var urlCombos = {}
 var checkedUrls = {}
 
@@ -40,11 +39,10 @@ function updateAds(urls) {
     var hasNoNewUrl = checkedUrls[finalUrl]
     
     if (hasNewUrl) {
-      Logger.log('has new url!')
      
       // Recreate ETA
       if (adType == 'EXPANDED_TEXT_AD') {
-        Logger.log('new eta')
+        Logger.log('new ETA in ' + ad.getAdGroup().getName())
         var eta = ad.asType().expandedTextAd()
 
         var path1 = eta.getPath1() || ''
@@ -68,15 +66,18 @@ function updateAds(urls) {
 
         // Recreate RSA
       } else if (adType == 'VERSATILE_TEXT_AD') {
+        Logger.log('new RSA in ' + ad.getAdGroup().getName())
         var rsa = ad.asType().responsiveSearchAd()
 
         var headlines = rsa.getHeadlines()
         var descriptions = rsa.getDescriptions()
+        
+        Logger.log('ad: ' + finalUrl + ' - ' + hasNewUrl)
 
         var rsaOperation = adGroup.newAd().responsiveSearchAdBuilder()
           .withHeadlines(headlines)
           .withDescriptions(descriptions)
-          .withFinalUrl(finalUrl)
+          .withFinalUrl(hasNewUrl)
           .build()
         ad.pause()
       }
