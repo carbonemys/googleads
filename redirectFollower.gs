@@ -7,6 +7,7 @@
   Sources: https://stackoverflow.com/questions/27098169/what-google-appsscript-method-is-used-to-get-the-url-of-a-redirect
 */
 
+var accountId = '598-056-8272'
 var dateRange = 'TODAY';          // e.g. TODAY, YESTERDAY, LAST_7_DAYS
 var urlCombos = {}
 var checkedUrls = {}
@@ -14,7 +15,9 @@ var checkedUrls = {}
 // functions - do not alter ************************************************************
 
 function main() {
-  updateAds()
+  var account = AdsManagerApp.accounts().withIds([accountId])
+  Logger.log(account.get().next().getName())
+  account.executeInParallel('updateAds')
 }
 
 function updateAds(urls) {
@@ -85,13 +88,18 @@ function updateAds(urls) {
 }
 
 function findRedirectUrl(finalUrl) {
-  if (urlCombos[finalUrl]) {
+  if (urlCombos[finalUrl] || checkedUrls[finalUrl]) {
+    //Logger.log('Url already checked')
     return false
   }
   
   var response = UrlFetchApp.fetch(finalUrl, { followRedirects: false, muteHttpExceptions: true })
   var responseCode = response.getResponseCode()
   var newUrl = response.getHeaders()['Location']
+  
+  if (!newUrl) {
+    checkedUrls[finalUrl] = 'checked'
+  }
 
   if (!responseCode) {
     Logger.log('no response code')
@@ -102,7 +110,7 @@ function findRedirectUrl(finalUrl) {
       urlCombos[finalUrl] = newUrl
       return true
     } else {
-      checkedUrls[finalUrl] = 0
+      checkedUrls[finalUrl] = 'checked'
       //Logger.log(newUrl + ' does not contain http')
     }
   }
