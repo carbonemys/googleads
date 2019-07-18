@@ -1,6 +1,8 @@
 /*
   Redirect follower v2 by Bas Baudoin
   
+  This scripts replaces ETA/RSA final URLs with 301/302 redirected URL if available
+  
   Instructions:
   - MCC script
   - Change account ID
