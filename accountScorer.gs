@@ -11,7 +11,7 @@
 
 var config = {
   spreadsheetUrl: 'https://docs.google.com/spreadsheets/d/1qC9PLnBwXNdL_oFB1fP4gnbjn86HEr6RyrdEtl4fE5Y/edit#gid=1304453365',
-  accountLabel: 'Xander',
+  accountLabel: 'LabelName',
   rawTabName: 'data_raw',
   firstDataRow: 7,
   firstDataColumn: 1,
@@ -529,7 +529,7 @@ function getCampaignData () {
     has4Sitelinks: true,
     snippets: true,
     has4Highlights: true,
-    deviceBidding: false
+    deviceBidding: true
   }
   
   var sitelinkData = [];
@@ -542,7 +542,7 @@ function getCampaignData () {
   var manualData = [];
   var conversionOptimizerData = [];
   
-  var campaignIterator = AdWordsApp.campaigns()
+  var campaignIterator = AdsApp.campaigns()
     .withCondition('Status = ENABLED')
     .withCondition('AdvertisingChannelType = SEARCH')
     .get();
@@ -585,11 +585,13 @@ function getCampaignData () {
     }
     
     // check for device settings
-    var deviceIterator = campaign.targeting().platforms().mobile().get().next()
-    if (deviceIterator.getBidModifier() !== 1) {
-      campaignScores.deviceBidding = true
+    var platforms = campaign.targeting().platforms()
+    var mobile = platforms.mobile().get().next()
+    var desktop = campaign.targeting().platforms().desktop().get().next()
+    
+    if (mobile.getBidModifier() == 1 && desktop.getBidModifier() == 1) {
+      campaignScores.deviceBidding = false
     }
-
   }
 
   return campaignScores
