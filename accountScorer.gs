@@ -10,8 +10,8 @@
 */
 
 var config = {
-  spreadsheetUrl: 'https://docs.google.com/spreadsheets/d/123abc/edit#gid=123213',
-  accountLabel: 'abc',
+  spreadsheetUrl: 'https://docs.google.com/spreadsheets/d/1qC9PLnBwXNdL_oFB1fP4gnbjn86HEr6RyrdEtl4fE5Y/edit#gid=1304453365',
+  accountLabel: 'Xander',
   rawTabName: 'data_raw',
   firstDataRow: 7,
   firstDataColumn: 1,
@@ -29,13 +29,15 @@ var config = {
     'hasNoMissingRsas',
     'hasNoMissingHeadline3',
     'hasNoSta',
-    'remarketing',
+    'RLSA',
     'inMarket',
     'deviceBidding',
     '4+highlights',
     '4+sitelinks',
     'snippets',
-    'noClicksBadCountries'
+    'noClicksBadCountries',
+    'hasNoDisapprovedEtas',
+    'has1yNonConvertedKeywords'
   ]]
 }
 
@@ -138,7 +140,8 @@ function scoreAccount() {
     [campaignData.has4Highlights || extensionData.has4Highlights],
     [campaignData.has4Sitelinks || extensionData.has4Sitelinks],
     [campaignData.snippets || extensionData.hasSnippets],
-    [geoData.badCountryClicks]
+    [geoData.badCountryClicks],
+    [adData.hasNoDisapprovedEtas]
    )
   
   var totalScore = makeTotalScore(scores)
@@ -189,7 +192,7 @@ function getGeoData () {
   
   // Saudi Arabia, Turkey, India, Iraq, Indonesia
   var geoData = AdsApp.report(
-  "SELECT Clicks, CountryCriteriaId, LocationType, IsTargetingLocation, CampaignName " +
+  "SELECT Clicks, CountryCriteriaId, LocationType, IsTargetingLocation, CampaignName, AccountDescriptiveName " +
   "FROM GEO_PERFORMANCE_REPORT " +
   "WHERE IsTargetingLocation IN [false] " +
   "AND CountryCriteriaId IN [2682, 2792, 2356, 2368, 2360] " +
@@ -448,7 +451,8 @@ function getAdData () {
   var adData = []
   var adScores = {
     hasNoSta: true,
-    hasNoMissingHeadline3: true
+    hasNoMissingHeadline3: true,
+    hasNoDisapprovedEtas: true
   }
   
   var adStaData = false
@@ -480,6 +484,10 @@ function getAdData () {
     if (headline3 === null) {
       adHeadline3Data = false
       adScores.hasNoMissingHeadline3 = false
+    }
+    var approvalStatus = eta.getPolicyApprovalStatus()
+    if (approvalStatus == 'DISAPPROVED') {
+      adScores.hasNoDisapprovedEtas = false
     }
   }
   
