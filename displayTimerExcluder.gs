@@ -17,7 +17,7 @@ function excludePlacements() {
      .placements()
      .withCondition("Conversions < " + minConversions)
      .withCondition("Clicks >= " + maxClicks)
-     .withCondition("CampaignName CONTAINS " + campaignName)
+     .withCondition("CampaignName CONTAINS '" + campaignName + "'")
      .forDateRange(dateRange)
 
  var placementIterator = placementSelector.get()
