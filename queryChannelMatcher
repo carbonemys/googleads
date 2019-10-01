@@ -1,0 +1,72 @@
+var contains = "Shop"
+var daysFrom = 180
+var daysTo = 1
+var minimalConversions = 1
+
+function main() {
+  var searchQueries = {}
+  var shopQueries = {}
+
+  var resultsString = ""
+  
+  var searchQueryData = AdsApp.report(
+  "SELECT CampaignName, Query, Clicks, Impressions, Conversions, AdNetworkType1, AdNetworkType2 , AdFormat " +
+  "FROM SEARCH_QUERY_PERFORMANCE_REPORT " +
+  "WHERE Conversions > " + minimalConversions + " " +
+  "AND CampaignName CONTAINS_IGNORE_CASE " + contains + " " +
+  "DURING " + getDateByDaysAgo(daysFrom) + ',' + getDateByDaysAgo(daysTo))
+  
+  var searchQueryRows = searchQueryData.rows()
+  while (searchQueryRows.hasNext()) {
+    var queryRow = searchQueryRows.next()
+    var clicks = queryRow["Clicks"]
+    var conversions = queryRow["Conversions"]
+    var query = queryRow["Query"]
+    searchQueries[query] = conversions
+  }
+  
+  var shopQueryData = AdsApp.report(
+  "SELECT CampaignName, Query, Clicks, Impressions, Conversions, AdNetworkType1, AdNetworkType2 , AdFormat " +
+  "FROM SEARCH_QUERY_PERFORMANCE_REPORT " +
+  "WHERE Conversions > " + minimalConversions + " " +
+  "AND CampaignName DOES_NOT_CONTAIN_IGNORE_CASE " + contains + " " +
+  "DURING LAST_30_DAYS")
+  
+  var shopQueryRows = shopQueryData.rows()
+  while (shopQueryRows.hasNext()) {
+    var queryRow = shopQueryRows.next()
+    var clicks = queryRow["Clicks"]
+    var conversions = queryRow["Conversions"]
+    var query = queryRow["Query"]
+    shopQueries[query] = conversions
+  }
+  
+  //Logger.log(">>> Shopping queries not in search:")
+  resultsString += ">>> Shopping queries not in search:" + "\n"
+  for (var query in searchQueries) {
+    if (!shopQueries[query]) {
+      //Logger.log(searchQueries[query] + " conversions - query: " + query)
+      resultsString += searchQueries[query] + " conversions - query: " + query + "\n"
+    }
+  }
+  
+  //Logger.log(" ")
+  resultsString += "\n"
+  //Logger.log(">>> Search queries not in shopping:")
+  resultsString += ">>> Search queries not in shopping:" + "\n"
+
+  for (var query in shopQueries) {
+    if (!searchQueries[query]) {
+      //Logger.log(shopQueries[query] + " conversions - query: " + query)
+      resultsString += shopQueries[query] + " conversions - query: " + query + "\n"
+    }
+  }
+  Logger.log(resultsString)
+}
+
+function getDateByDaysAgo(daysAgo) {
+var today = new Date()
+today.setDate(today.getDate() - daysAgo)
+    var formattedDate = Utilities.formatDate(today, 'PST', 'yyyyMMdd')
+    return formattedDate
+}
