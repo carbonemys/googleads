@@ -1,9 +1,16 @@
+// settings
+var accountId = '914-330-5971'
 var contains = "Shop"
 var daysFrom = 180
 var daysTo = 1
 var minimalConversions = 1
 
 function main() {
+  var account = AdsManagerApp.accounts().withIds([accountId]).executeInParallel('match')
+}
+
+
+function match() {
   var searchQueries = {}
   var shopQueries = {}
 
