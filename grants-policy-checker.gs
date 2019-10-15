@@ -56,7 +56,7 @@ function runChecks() {
   Logger.log(ctrLastWeek)
   Logger.log(disapprovedAds)
 
-  if (qScoreData.length > 0 || singleWordKeywords.lenght > 0 || adGroupsPerCampaign.length > 0 || adsPerAdgroup.length > 0 || ctrLastWeek.length > 0) {
+  if (qScoreData.length > 0 || singleWordKeywords.lenght > 0 || adGroupsPerCampaign.length > 0 || adsPerAdgroup.length > 0 || ctrLastWeek.length > 0 || disapprovedAds.length > 0) {
 
     MailApp.sendEmail(email,
       'Grants checker results ' + accountName,
