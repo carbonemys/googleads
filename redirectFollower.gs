@@ -1,5 +1,5 @@
 /*
-  Redirect follower v2 by Bas Baudoin
+  Redirect follower v2.1 by Bas Baudoin
   
   This scripts replaces ETA/RSA final URLs with 301/302 redirected URL if available
   
@@ -57,6 +57,8 @@ function updateAds(urls) {
         var path2 = eta.getPath2() || ''
         var headline3 = eta.getHeadlinePart3() || ''
         var description2 = eta.getDescription2() || ''
+        //var labelIterator = eta.labels().get()
+        var labelIterator = ad.labels().get()
 
         Logger.log('ad: ' + finalUrl + ' - ' + hasNewUrl)
 
@@ -70,6 +72,15 @@ function updateAds(urls) {
           .withPath2(path2)
           .withFinalUrl(hasNewUrl)
           .build()
+        
+        var newAd = adOperation.getResult()
+
+        while (labelIterator.hasNext()) {
+          var label = labelIterator.next()
+          var labelText = label.getName()
+          newAd.applyLabel(labelText)
+        }
+
         ad.pause()
 
         // Recreate RSA
@@ -79,6 +90,7 @@ function updateAds(urls) {
 
         var headlines = rsa.getHeadlines()
         var descriptions = rsa.getDescriptions()
+        var labelIterator = rsa.labels().get()
         
         Logger.log('ad: ' + finalUrl + ' - ' + hasNewUrl)
 
@@ -87,6 +99,14 @@ function updateAds(urls) {
           .withDescriptions(descriptions)
           .withFinalUrl(hasNewUrl)
           .build()
+
+        var newAd = rsaOperation.getResult()
+
+        while (labelIterator.hasNext()) {
+          var label = labelIterator.next()
+          var labelText = label.getName()
+          newAd.applyLabel(labelText)
+        }
         ad.pause()
       }
     }
