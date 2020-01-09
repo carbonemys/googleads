@@ -9,11 +9,11 @@
   - Run example, check logs
   
   Todos
-  - Non-domain urls
-  - Extensions
+  - Non-domain urls (?)
+  - Refactor
 */
 
-var accountId = 'XXX-XXX-XXX'
+var accountId = 'XXX-XXX-XXXX'
 
 // placeholders
 var urlCombos = {}
@@ -27,7 +27,9 @@ function main() {
   account.executeInParallel('updateAds')
 }
 
-function updateAds(urls) {
+
+function updateAds() {
+  updateSitelinks()
   var adSelector = AdsApp.ads()
     .withCondition('Status = ENABLED')
     .withCondition("AdGroupStatus = ENABLED")
@@ -114,6 +116,30 @@ function updateAds(urls) {
   Logger.log('Final results')
   Logger.log(urlCombos)
   Logger.log(checkedUrls)
+}
+
+function updateSitelinks() {
+  var accountSitelinkIterator = AdsApp
+    .extensions()
+    .sitelinks()
+    .withCondition('Status = ENABLED')
+    .get()
+
+  while (accountSitelinkIterator.hasNext()) {
+    var sitelink = accountSitelinkIterator.next()
+    var finalUrl = sitelink.urls().getFinalUrl()
+
+    // check url availability or add to objects
+    findRedirectUrl(finalUrl)
+    var hasNewUrl = urlCombos[finalUrl]
+    var hasNoNewUrl = checkedUrls[finalUrl]
+
+    if (hasNewUrl) {
+      Logger.log('Sitelink has new URL')
+      sitelink.urls().setFinalUrl(hasNewUrl)
+    }
+  }
+
 }
 
 function findRedirectUrl(finalUrl) {
